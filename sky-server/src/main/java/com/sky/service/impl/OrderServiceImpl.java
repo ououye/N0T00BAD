@@ -235,12 +235,8 @@ public class OrderServiceImpl implements OrderService {
 
         // 订单处于待接单状态下取消，需要进行退款
         if (ordersDB.getStatus().equals(Orders.TO_BE_CONFIRMED)) {
-            //调用微信支付退款接口
-            weChatPayUtil.refund(
-                    ordersDB.getNumber(), //商户订单号
-                    ordersDB.getNumber(), //商户退款单号
-                    new BigDecimal(0.01),//退款金额，单位 元
-                    new BigDecimal(0.01));//原订单金额
+            //开发模式：跳过微信退款（正式环境放开）
+            log.info("开发模式：订单 {} 退款跳过", ordersDB.getNumber());
 
             //支付状态修改为 退款
             orders.setPayStatus(Orders.REFUND);
@@ -382,14 +378,9 @@ public class OrderServiceImpl implements OrderService {
 
         //支付状态
         Integer payStatus = ordersDB.getPayStatus();
+        // 开发模式：跳过微信退款（正式环境放开 refund 调用）
         if (payStatus == Orders.PAID) {
-            //用户已支付，需要退款
-            String refund = weChatPayUtil.refund(
-                    ordersDB.getNumber(),
-                    ordersDB.getNumber(),
-                    new BigDecimal(0.01),
-                    new BigDecimal(0.01));
-            log.info("申请退款：{}", refund);
+            log.info("开发模式：订单 {} 已支付，跳过微信退款", ordersDB.getNumber());
         }
 
         // 拒单需要退款，根据订单id更新订单状态、拒单原因、取消时间
@@ -412,14 +403,9 @@ public class OrderServiceImpl implements OrderService {
 
         //支付状态
         Integer payStatus = ordersDB.getPayStatus();
+        // 开发模式：跳过微信退款（正式环境放开 refund 调用）
         if (payStatus == 1) {
-            //用户已支付，需要退款
-            String refund = weChatPayUtil.refund(
-                    ordersDB.getNumber(),
-                    ordersDB.getNumber(),
-                    new BigDecimal(0.01),
-                    new BigDecimal(0.01));
-            log.info("申请退款：{}", refund);
+            log.info("开发模式：订单 {} 已支付，跳过微信退款", ordersDB.getNumber());
         }
 
         // 管理端取消订单需要退款，根据订单id更新订单状态、取消原因、取消时间
@@ -496,14 +482,7 @@ public class OrderServiceImpl implements OrderService {
         orderMapper.update(orders);
 
 
-        //通过websocket向客户端浏览器推送消息 type orderId content
-        Map map = new HashMap();
-        map.put("type",1); // 1表示来单提醒 2表示客户催单
-        map.put("orderId",ordersDB.getId());
-        map.put("content","订单号：" + ordersDB.getNumber());
-
-        String json = JSON.toJSONString(map);
-        webSocketServer.sendToAllClient(json);
+        // 完成订单不再推送"来单提醒"（来单提醒只在用户下单时推送）
     }
 
 }
